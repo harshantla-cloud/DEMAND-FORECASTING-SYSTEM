@@ -1,14 +1,16 @@
-# 📊 Demand Forecasting System
+# 📈 Demand Forecasting System
 
-> Predicts product demand from pricing, promotion, inventory and competitor-pricing signals using a tuned XGBoost regressor, served through an interactive Streamlit app.
+> An XGBoost-based regression system that predicts product demand from pricing, promotion, inventory and competitor-pricing signals, served through an interactive Streamlit app.
 
-[![Repo](https://img.shields.io/badge/GitHub-Demand--Forecasting--System-181717?logo=github&logoColor=white)](https://github.com/harshantla-cloud/DEMAND-FORECASTING-SYSTEM)
+[![Repo](https://img.shields.io/badge/GitHub-DEMAND--FORECASTING--SYSTEM-181717?logo=github&logoColor=white)](https://github.com/harshantla-cloud/DEMAND-FORECASTING-SYSTEM)
 [![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
 [![XGBoost](https://img.shields.io/badge/Model-XGBoost-006400)](https://xgboost.readthedocs.io/)
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit%20Cloud-FF4B4B?logo=streamlit&logoColor=white)](https://harsh-demand-forecasting.streamlit.app/)
+[![Machine Learning](https://img.shields.io/badge/Machine%20Learning-Regression-orange)](#-machine-learning-pipeline)
 
-Retailers routinely over- or under-stock products because demand is estimated by intuition rather than data. This project trains a gradient-boosted regression model on **76,000 historical sales records** and exposes it through a lightweight web app. A user enters price, discount, inventory level, promotion status, competitor price and category, and receives an instant demand forecast in units. It is built for retail and inventory-planning use cases and demonstrates an end-to-end ML workflow, from raw data to a working prediction interface.
+**Live Demo:** [harsh-demand-forecasting.streamlit.app](https://harsh-demand-forecasting.streamlit.app/)
+
+Retailers routinely over- or under-stock products because demand is estimated by intuition rather than data. This project trains a gradient-boosted regression model on **76,000 historical sales records** and exposes it through a lightweight web app. A user enters a product's price, discount, inventory level, promotion status, competitor price and category, and receives an instant demand estimate in units. It is built for retail and inventory-planning use cases and demonstrates an end-to-end ML workflow, from raw data to a working prediction interface.
 
 ---
 
@@ -16,19 +18,20 @@ Retailers routinely over- or under-stock products because demand is estimated by
 
 | | |
 |---|---|
-| **Problem** | Inventory and pricing teams need a fast way to estimate units demanded under a given set of conditions (price, discount, promotion, competitor pricing). |
-| **Solution** | A trained XGBoost regression model wrapped in a Streamlit form that returns a predicted demand figure in real time. |
+| **Problem** | Inventory and pricing teams need a fast way to estimate how many units of a product will be demanded under a given set of conditions, without building a statistical model by hand. |
+| **Solution** | A trained XGBoost regressor wrapped in a Streamlit form that returns a predicted demand figure in real time. |
 | **Target Users** | Retail analysts, inventory planners and e-commerce teams evaluating pricing and promotion scenarios. |
-| **Key Value** | Turns a static historical dataset into an interactive "what-if" tool: change the price or toggle a promotion and see the projected demand. |
+| **Use Case** | "What-if" analysis: change the price, discount or promotion flag and see the projected demand. |
+| **Key Value** | Turns a static historical dataset into an interactive decision-support tool. |
 
 ---
 
 ## 🎯 Objectives
 
 - Predict product demand (in units) from price, discount, inventory, promotion and competitor-pricing features
-- Quantify which inputs drive demand (feature importance)
+- Quantify which inputs actually drive demand through feature-importance analysis
 - Provide a no-code interface so non-technical users can generate a forecast
-- Serialize the trained model and encoder for reuse without retraining
+- Package the trained model and encoder as serialized artifacts so the app runs without retraining
 
 ---
 
@@ -36,65 +39,72 @@ Retailers routinely over- or under-stock products because demand is estimated by
 
 ### Core Features
 - Real-time demand prediction from six user-provided inputs
-- Single-page workflow: enter values → click **Predict Demand** → view forecast
+- Single-page workflow: enter values → click **Predict Demand** → view result
+- Expandable panel that echoes the exact inputs used for each prediction
 
 ### ML/AI Features
-- `XGBRegressor` tuned with `RandomizedSearchCV` (25 iterations, 3-fold cross-validation)
-- Label-encoded handling of the `Category` feature, persisted alongside the model
-- Feature-importance analysis showing which inputs most influence demand
+- XGBoost Regressor tuned with `RandomizedSearchCV` (25 candidate configurations, 3-fold cross-validation)
+- Label-encoded handling of the `Category` feature, with the fitted encoder persisted alongside the model
+- Feature-importance analysis identifying which inputs most influence demand
 
 ### User Interface Features
-- Streamlit app with a custom-styled background, sidebar summary and a highlighted forecast card
-- Two-column input layout with input validation bounds (for example, discount limited to 0–100)
-- Expandable "View prediction inputs" table to review what was submitted
-- Predictions are rounded and clamped to non-negative integer units
+- Streamlit app with a custom dark theme, background image, sidebar summary and summary cards
+- Two-column input layout and a highlighted result card showing the forecast in units
+- Input widgets with sensible bounds (for example, discount limited to 0–100%)
 
 ### Engineering Features
-- Model and encoder cached with `@st.cache_resource` so they load once per session
-- Pickled artifacts loaded independently of the training notebooks
-- Graceful error handling for missing artifacts and failed predictions
+- Model and encoder loaded once per session with `@st.cache_resource`
+- Trained artifacts serialized with `pickle` and loaded independently of the training notebooks
+- Graceful error handling around model loading and prediction
+- Predictions rounded to whole units and floored at zero
 - Clear separation of data, notebooks, models and application code
 
 ---
 
 ## 🏗️ System Architecture
 
+The diagram reflects the runtime path implemented in `app.py`.
+
 ```mermaid
 flowchart TD
-    A[User] --> B["Streamlit UI (app.py)"]
-    B --> C["Input Form: Price, Discount, Inventory Level,<br/>Promotion, Competitor Pricing, Category"]
-    C --> D["Label Encoding<br/>(label_encoder.pkl)"]
-    D --> E["XGBoost Regressor<br/>(xgboost_demand_model.pkl)"]
-    E --> F["Predicted Demand (units)"]
-    F --> G["Forecast Card + Input Summary"]
+    A([User]) --> B["Streamlit UI<br/>(app.py)"]
+    B --> C["Input Form<br/>Price, Discount, Inventory Level,<br/>Promotion, Competitor Pricing, Category"]
+    C --> D["Build Feature DataFrame<br/>(six model features)"]
+    D --> E["Encode Category<br/>(models/label_encoder.pkl)"]
+    E --> F["XGBoost Regressor<br/>(models/xgboost_demand_model.pkl)"]
+    F --> G["Post-processing<br/>round to integer, minimum 0"]
+    G --> H["Result Card<br/>Forecasted Demand (Units)"]
 ```
 
-| Component | Role |
-|---|---|
-| **Streamlit UI** | Collects six inputs across two columns and triggers prediction (`app.py`). |
-| **Label Encoding** | Applies the saved encoder to `Category`, loaded from `models/label_encoder.pkl`. |
-| **XGBoost Regressor** | Pre-trained model loaded from `models/xgboost_demand_model.pkl`; produces the prediction. |
-| **Result Card** | Displays the forecast as "N Units" with a summary of the submitted inputs. |
+**Components**
+
+- **Streamlit UI**: collects six inputs across two columns and renders the result card.
+- **Feature DataFrame**: rebuilds the exact column structure the model was trained on.
+- **Encoder**: the saved encoder object is loaded from `models/label_encoder.pkl`, and the app applies it to `Category` before prediction.
+- **XGBoost Regressor**: the pre-trained model in `models/xgboost_demand_model.pkl` produces the prediction.
+- **Post-processing**: the raw output is rounded to a whole number and clipped at zero before display.
 
 ---
 
 ## 🔄 Project Workflow
 
+End-to-end sequence across `notebooks/analysis.ipynb`, `notebooks/machine_learning.ipynb` and the application.
+
 ```mermaid
 flowchart TD
-    A["Raw Dataset<br/>(demand_forecasting.csv, 76,000 rows)"] --> B["Data Understanding & Cleaning<br/>(no nulls or duplicates found)"]
+    A["Raw Dataset<br/>demand_forecasting.csv (76,000 rows)"] --> B["Data Understanding & Cleaning<br/>null and duplicate checks"]
     B --> C["Exploratory Data Analysis<br/>(analysis.ipynb)"]
     C --> D["Feature Selection<br/>(6 modeling features)"]
     D --> E["Label Encoding<br/>(Category)"]
-    E --> F["Train / Test Split<br/>(80% / 20%, random_state=42)"]
+    E --> F["Train / Test Split<br/>80% / 20%, random_state=42"]
     F --> G["XGBoost Regressor<br/>+ RandomizedSearchCV"]
     G --> H["Best Estimator Selected"]
-    H --> I["Model + Encoder Serialization<br/>(pickle)"]
-    I --> J["Streamlit App (app.py)"]
+    H --> I["Serialize Model + Encoder<br/>(pickle)"]
+    I --> J["Streamlit App<br/>(app.py)"]
     J --> K["Real-Time Prediction"]
 ```
 
-> The EDA notebook also engineers exploratory fields (`Year`, `Month`, `Day`, `Weekday`, `Discounted Price`, `Sell Through Rate`) for analysis and charting. The final model uses only the six features listed below.
+> The EDA notebook also engineers exploratory features (`Year`, `Month`, `Day`, `Weekday`, `Discounted Price`, `Sell Through Rate`) for analysis and charting. The final model does **not** consume them.
 
 ---
 
@@ -102,28 +112,28 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A[Dataset] --> B[Feature Selection]
-    B --> C[Label Encoding]
-    C --> D[80/20 Split]
-    D --> E[RandomizedSearchCV<br/>XGBRegressor]
-    E --> F[Best Model]
-    F --> G[Pickle Serialization]
-    G --> H[Streamlit Inference]
+    A["Dataset<br/>76,000 x 16"] --> B["6 Features<br/>+ Target: Demand"]
+    B --> C["Label Encoding<br/>Category"]
+    C --> D["80/20 Split"]
+    D --> E["RandomizedSearchCV<br/>25 iter, 3-fold CV"]
+    E --> F["Best XGBRegressor"]
+    F --> G["Pickle Artifacts"]
+    G --> H["Streamlit Inference"]
 ```
 
-| Stage | Details |
+| Stage | Detail |
 |---|---|
-| **Dataset** | `data/demand_forecasting.csv`: 76,000 rows, 16 columns (Date, Store ID, Product ID, Category, Region, Inventory Level, Units Sold, Units Ordered, Price, Discount, Weather Condition, Promotion, Competitor Pricing, Seasonality, Epidemic, Demand) |
-| **Modeling features (6)** | `Price`, `Discount`, `Inventory Level`, `Promotion`, `Competitor Pricing`, `Category` |
+| **Dataset** | `data/demand_forecasting.csv`: 76,000 rows, 16 original columns (Date, Store ID, Product ID, Category, Region, Inventory Level, Units Sold, Units Ordered, Price, Discount, Weather Condition, Promotion, Competitor Pricing, Seasonality, Epidemic, Demand) |
+| **Features (6)** | `Price`, `Discount`, `Inventory Level`, `Promotion`, `Competitor Pricing`, `Category` |
 | **Target** | `Demand` |
 | **Preprocessing** | Checked for nulls and duplicates (none found) |
-| **Encoding** | `LabelEncoder` on the single categorical feature, `Category` |
-| **Train/Test split** | 80% / 20%, `random_state=42` |
+| **Encoding** | Label encoding on the single categorical feature, `Category` |
+| **Train/Test Split** | 80% / 20%, `random_state=42` |
 | **Model** | `XGBRegressor` (`objective='reg:squarederror'`) |
-| **Hyperparameter search** | `RandomizedSearchCV`, 25 iterations, 3-fold CV, scored on negative MAE |
-| **Evaluation** | RMSE code is present in the notebook but its output was not saved: **Not specified** |
+| **Tuning** | `RandomizedSearchCV`, 25 iterations, 3-fold CV, scored on negative MAE |
+| **Evaluation** | Not specified (see [Results](#-results)) |
 | **Serialization** | `models/xgboost_demand_model.pkl`, `models/label_encoder.pkl` |
-| **Prediction pipeline** | App rebuilds the six-column frame, applies the saved encoder, calls `model.predict()` |
+| **Prediction** | App rebuilds the six-column input, applies the saved encoder, calls `model.predict()` |
 
 **Best hyperparameters found**
 
@@ -142,9 +152,9 @@ flowchart LR
 
 | Model | Purpose | Tuning | Evaluation Metric | Result |
 |---|---|---|---|---|
-| XGBoost Regressor | Predict product demand (units) | `RandomizedSearchCV`, 25 iterations, 3-fold CV | RMSE (code present) | Not specified (not executed in notebook) |
+| XGBoost Regressor (`XGBRegressor`) | Predict product demand (units) | `RandomizedSearchCV`, 25 iterations, 3-fold CV | Not specified | Not specified |
 
-Only one model family (XGBoost) was trained and tuned; the notebooks contain no comparison against alternative algorithms.
+Only one model family (XGBoost) was trained and tuned. No comparison against alternative algorithms is present in the project, so XGBoost is the final model by design rather than by benchmarked selection.
 
 **Feature importance (trained model)**
 
@@ -164,36 +174,37 @@ Only one model family (XGBoost) was trained and tuned; the notebooks contain no 
 Performed in `notebooks/analysis.ipynb`:
 
 - **Dimensions:** 76,000 rows × 16 original columns
-- **Data quality:** zero missing values, zero duplicate rows
-- **Composition:** 5 stores, 20 products, 5 categories (`Groceries` most frequent), 4 regions, 4 weather conditions, 4 seasons
-- **Category vs. demand:** `Groceries` has the highest total demand (3,677,684 units) and highest average demand per record (≈121); `Furniture` has the lowest average (≈74)
-- **Promotion effect:** average demand rises from ≈95 units (no promotion) to ≈123 units (promotion active)
+- **Data quality:** zero missing values and zero duplicate rows
+- **Categorical breakdown:** 5 stores, 20 products, 5 categories (`Groceries` most frequent), 4 regions, 4 weather conditions, 4 seasons
+- **Category vs. demand:** `Groceries` has the highest total demand (3,677,684 units) and the highest average demand per record (about 121); `Furniture` has the lowest average (about 74)
+- **Promotion effect:** average demand rises from about 95 units (no promotion) to about 123 units (promotion active)
 - **Seasonality:** average demand is highest in Summer across all four regions
-- **Other charts in the notebook:** demand distribution, inventory vs. units sold, demand by category and weather, monthly and daily trends, discounted price vs. demand (rendered inline in the notebook; not exported as image files)
+- **Charts in the notebook:** demand distribution, inventory vs. units sold, demand by category and weather condition, monthly and daily demand trends, discounted price vs. demand
+
+Charts are rendered inline in the notebooks and are not exported as image files in the repository.
 
 ---
 
 ## 🖥️ Application Preview
 
 ### Home / Input Interface
-<img src="assets/App%20Dashboard.jpeg" alt="Home interface" width="100%">
+![Home Interface](assets/App%20Dashboard.jpeg)
 
 Two-column form for price, discount, inventory level, promotion, competitor price and category.
 
 ### Prediction Result
-<img src="assets/Prediction%20by%20model.jpeg" alt="Prediction result" width="100%">
+![Prediction Result](assets/Prediction%20by%20model.jpeg)
 
-Forecasted demand appears as a highlighted card once **Predict Demand** is clicked.
-
-> **Note:** `assets/Project Image/` contains conceptual presentation graphics that illustrate a broader system than what is implemented here, so they are intentionally not used as documentation of the current codebase.
+Forecasted demand is shown in a result card after clicking **Predict Demand**.
 
 ---
 
 ## 📈 Results
 
-- **Dominant predictors:** Promotion and Category together account for roughly 77% of total feature importance; pricing and inventory fields have a comparatively smaller effect.
-- **Promotion uplift:** EDA shows about 29% higher average demand when a promotion is active, consistent with the model's learned importances.
-- **Held-out accuracy:** an RMSE calculation is scaffolded in the training notebook but its output was not captured, so no test-set accuracy figure is reported.
+- **Key demand drivers:** Promotion and Category together account for roughly 77% of total feature importance. Pricing and inventory fields contribute comparatively little.
+- **Promotion uplift:** EDA shows about 29% higher average demand when a promotion is active (about 95 to about 123 units), consistent with the model's learned importances.
+- **Model performance:** a held-out evaluation metric (RMSE) is scaffolded in the training notebook but its output was not saved, so **no accuracy figure is reported here**.
+- **Scope note:** the model uses six tabular features and no date or time features. It estimates demand for a given scenario rather than projecting a time series into the future.
 
 ---
 
@@ -203,7 +214,7 @@ Forecasted demand appears as a highlighted card once **Predict Demand** is click
 |---|---|
 | Language | Python |
 | Data Processing | Pandas, NumPy |
-| Visualization (notebooks) | Matplotlib, Seaborn |
+| Visualization | Matplotlib, Seaborn |
 | Machine Learning | Scikit-learn, XGBoost |
 | Frontend / App | Streamlit |
 | Model Serialization | Pickle |
@@ -213,18 +224,14 @@ Forecasted demand appears as a highlighted card once **Predict Demand** is click
 
 ## 📁 Project Structure
 
-```
+```text
 DEMAND-FORECASTING-SYSTEM/
 │
 ├── assets/
 │   ├── App Dashboard.jpeg
 │   ├── Prediction by model.jpeg
 │   ├── background.png
-│   └── Project Image/
-│       ├── 3D Explanation Model.jpeg
-│       ├── Blue Print of Model.jpeg
-│       ├── Brielfly Expalin Model.jpeg
-│       └── Feature Importance.jpeg
+│   └── Project Image/                 # presentation graphics
 │
 ├── data/
 │   ├── demand_forecasting.csv
@@ -235,11 +242,12 @@ DEMAND-FORECASTING-SYSTEM/
 │   └── xgboost_demand_model.pkl
 │
 ├── notebooks/
-│   ├── analysis.ipynb            # EDA, cleaning, feature engineering
-│   └── machine_learning.ipynb    # Feature selection, training, tuning
+│   ├── analysis.ipynb                 # EDA, cleaning, feature engineering
+│   └── machine_learning.ipynb         # feature selection, training, tuning
 │
-├── app.py                        # Streamlit application
+├── app.py                             # Streamlit application
 ├── requirements.txt
+├── .gitignore
 └── README.md
 ```
 
@@ -247,9 +255,8 @@ DEMAND-FORECASTING-SYSTEM/
 |---|---|
 | `app.py` | Loads the serialized model and encoder and serves the prediction interface |
 | `notebooks/analysis.ipynb` | Data cleaning and exploratory analysis |
-| `notebooks/machine_learning.ipynb` | Feature selection, split, training and hyperparameter tuning |
+| `notebooks/machine_learning.ipynb` | Feature selection, train/test split, training and hyperparameter tuning |
 | `models/` | Artifacts consumed directly by `app.py` |
-| `requirements.txt` | `streamlit`, `pandas`, `numpy`, `scikit-learn`, `xgboost` |
 
 ---
 
@@ -274,6 +281,8 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+The app opens at `http://localhost:8501`.
+
 ---
 
 ## ▶️ Usage
@@ -285,16 +294,16 @@ streamlit run app.py
 5. Enter the **Competitor Price**
 6. Select the product **Category**
 7. Click **🔮 Predict Demand**
-8. Read the forecasted demand in units
+8. Read the forecasted demand in units; expand **View prediction inputs** to review what was submitted
 
 ---
 
 ## 🔮 Future Improvements
 
 - Capture and report held-out metrics (RMSE, MAE, R²) for the trained model
-- Add batch prediction via CSV upload
-- Test whether the engineered time-based features (`Month`, `Weekday`, `Discounted Price`, `Sell Through Rate`) improve the model
 - Compare XGBoost against alternative regressors to validate model selection
+- Test the engineered time-based features (`Month`, `Weekday`, `Discounted Price`, `Sell Through Rate`) for predictive value
+- Add batch prediction through CSV upload
 - Add automated tests and CI for the data and model pipeline
 
 ---
@@ -304,9 +313,5 @@ streamlit run app.py
 **Harsh** · B.Tech CSE (2023–2027) · Data Science, Machine Learning & AI
 
 - GitHub: [harshantla-cloud](https://github.com/harshantla-cloud)
-- LinkedIn: [linkedin.com/in/harsh-5694b13ab](https://www.linkedin.com/in/harsh-5694b13ab/)
+- LinkedIn: [harsh-5694b13ab](https://www.linkedin.com/in/harsh-5694b13ab/)
 - Live Demo: [harsh-demand-forecasting.streamlit.app](https://harsh-demand-forecasting.streamlit.app/)
-
----
-
-⭐ If you found this project useful, consider giving it a star.
